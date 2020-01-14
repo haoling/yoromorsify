@@ -1,0 +1,230 @@
+<html>
+
+<head>
+    <title>すすーっすっすーっっすっーっすすーっすっすっーっっすすーすっっすっーっすすっすーすっすすっーすすすっすーっすすすーっーっすっすっーっすっっーっすっすっーすすすっすーすっすすっーっすすっーすすすっすー</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+</head>
+
+<body>
+    <h2>これなに</h2>
+    <div>モールスヨロちゃん(<a href="https://twitter.com/Morse_Yorochan">@Morse_Yorochan</a>)<br />の[発するモールス信号を復号|読めるモールス信号に符号化]するものです。</div>
+    <hr />
+    <div>
+        原文<br />
+        <div style="font-size: x-small;">
+            全角カタカナで入力してください<br />
+            ひらがなからカタカナへの変換などは行いません。<br />
+            半角カナはサポートしていません。<br />
+        </div>
+        <textarea id="text" rows="10" cols="40">アンナチャン…</textarea><br />
+    </div>
+    <div>
+        <button id="btn_encode">↓エンコード</button>&nbsp;&nbsp;<button id="btn_decode">↑デコード</button><br />
+    </div>
+    <div>
+        ヨロモールス&nbsp;<button id="play" style="font-size: xx-small;">再生</button><br />
+        <textarea id="yoro" rows="10" cols="40">ｽｽｯｽｽｰｯｽｯｽｯｰｯｽｯｰｯｯｽｯｰｯｽｽｰｯｽｯｽｯｰ…</textarea><br />
+    </div>
+    <script>
+        /**
+         * @var Map<String, String> table カタカナとモールス信号の対照表。すっじゃなくて10で書いてるのは、単純に視認性が良かったから。
+         */
+        var table = {
+            'ア': '11011',
+            'カ': '0100',
+            'サ': '10101',
+            'タ': '10',
+            'ナ': '010',
+            'ハ': '1000',
+            'マ': '1001',
+            'ヤ': '011',
+            'ラ': '000',
+            'ワ': '101',
+            'イ': '01',
+            'キ': '10100',
+            'シ': '11010',
+            'チ': '0010',
+            'ニ': '1010',
+            'ヒ': '11001',
+            'ミ': '00101',
+            'リ': '110',
+            'ヰ': '01001',
+            'ウ': '001',
+            'ク': '0001',
+            'ス': '11101',
+            'ツ': '0110',
+            'ヌ': '0000',
+            'フ': '1100',
+            'ム': '1',
+            'ユ': '10011',
+            'ル': '10110',
+            'ン': '01010',
+            'オ': '01000',
+            'ケ': '1011',
+            'セ': '01110',
+            'テ': '01011',
+            'ネ': '1101',
+            'ヘ': '0',
+            'メ': '10001',
+            'レ': '111',
+            'ヱ': '01100',
+            '、': '010101',
+            'エ': '10111',
+            'コ': '1111',
+            'ソ': '1110',
+            'ト': '00100',
+            'ノ': '0011',
+            'ホ': '100',
+            'モ': '10010',
+            'ヨ': '11',
+            'ロ': '0101',
+            'ヲ': '0111',
+            '。': '010100',
+            '0': '11111',
+            '1': '01111',
+            '2': '00111',
+            '3': '00011',
+            '4': '00001',
+            '5': '00000',
+            '6': '10000',
+            '7': '11000',
+            '8': '11100',
+            '9': '11110',
+            '゛': '00',
+            'ー': '01101',
+            '゜': '00110',
+        };
+
+        /**
+         * @var Map<String, String> revTable 逆検索用のテーブルを作ってキャッシュしたもの
+         */
+        var revTable = {};
+        $.each(table, function (k, v) { revTable[v] = k; });
+
+        $('#btn_encode').on('click', function () {
+            // テキストを正規化する
+            // 濁点と半濁点を分離。小音を普通の大きさにする。
+            var text = $('#text').val();
+            text = text.replace(/ガ/g, 'カ゛').replace(/ギ/g, 'キ゛').replace(/グ/g, 'ク゛').replace(/ゲ/g, 'ケ゛').replace(/ゴ/g, 'コ゛');
+            text = text.replace(/ザ/g, 'サ゛').replace(/ジ/g, 'シ゛').replace(/ズ/g, 'ス゛').replace(/ゼ/g, 'セ゛').replace(/ゾ/g, 'ソ゛');
+            text = text.replace(/ダ/g, 'タ゛').replace(/ヂ/g, 'チ゛').replace(/ヅ/g, 'ツ゛').replace(/デ/g, 'テ゛').replace(/ド/g, 'ト゛');
+            text = text.replace(/バ/g, 'ハ゛').replace(/ビ/g, 'ヒ゛').replace(/ブ/g, 'フ゛').replace(/ベ/g, 'ヘ゛').replace(/ボ/g, 'ホ゛');
+            text = text.replace(/バ/g, 'ハ゛').replace(/ビ/g, 'ヒ゛').replace(/ブ/g, 'フ゛').replace(/ベ/g, 'ヘ゛').replace(/ボ/g, 'ホ゛');
+            text = text.replace(/ァ/g, 'ア').replace(/ィ/g, 'イ').replace(/ゥ/g, 'ウ').replace(/ェ/g, 'エ').replace(/ォ/g, 'オ');
+            text = text.replace(/ッ/g, 'ツ').replace(/ャ/g, 'ヤ').replace(/ュ/g, 'ユ').replace(/ョ/g, 'ヨ').replace(/ヮ/g, 'ワ');
+
+            // 1文字ずつ分離して処理する
+            var yoro = '';
+            $.each(text.split(''), function (pos, c) {
+                var m = table[c];
+                if (m == undefined) {
+                    // モールスに無い文字はそのまま書く
+                    m = c;
+                } else {
+                    // 1101 => すすっすー
+                    m = m.replace(/1/g, 'す').replace(/0/g, 'っ');
+                    m += 'ー';
+                }
+                yoro += m;
+            });
+            $('#yoro').val(yoro);
+        });
+
+        $('#btn_decode').on('click', function () {
+            var yoromors = $('#yoro').val();
+            // ヨロモールス側は、カタカナ、ひらがな、半角カナを受け入れる
+            // すすっすーっっすっー => 1101,0010
+            var mors = yoromors.replace(/[すスｽ]/g, '1').replace(/[っッｯ]/g, '0').replace(/[ー─-ｰ]/g, ',');
+            var text = '';
+
+            // 1グループごとに処理する
+            $.each(mors.split(','), function (pos, mor) {
+                // モールスパターンとの完全一致検索
+                var c = revTable[mor];
+
+                // 一致するものが無い場合は、モールスパターンをそのまま出す。
+                if (c == undefined) c = mor;
+
+                text += c;
+            });
+            $('#text').val(text);
+        });
+
+
+        /**
+         * モールス信号再生
+         * @see https://qiita.com/kurehajime/items/27c98de56fd06f93d0b8
+         */
+        var audio = new Audio();
+        audio.src = 'http://xiidec.appspot.com/etc/pi.wav';
+        $('#play').on('click', function () {
+            // ヨロモールスを文字単位に分解
+            var yoromors = $('#yoro').val().split('');
+
+            // オーディオリセット
+            audio.currentTime = 0;
+
+            /**
+             * @var Integer remain 次のオーディオ割り込みまでの残り周期
+             */
+            var remain = 0;
+
+            /**
+             * @var String mors モールスのグループを覚えておく変数。再生中の原文の逐次出力に使う。
+             */
+            var mors = '';
+
+            // 50ミリ秒ごとに割り込み処理
+            var timer = setInterval(function () {
+                if (remain > 0) {
+                    // まだ割り込まない
+                    remain--;
+                    if (remain == 0) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
+                    return;
+                }
+
+                // オーディオを停止してリセット
+                audio.pause();
+                audio.currentTime = 0;
+
+                if (yoromors.length <= 0) {
+                    // 終わり
+                    clearInterval(timer);
+                    return;
+                }
+
+                var onoff = yoromors.shift();
+                $('#yoro').val($('#yoro').val() + onoff);
+                if (onoff.match(/[すスｽ]/)) {
+                    // 長音を再生する
+                    audio.play();
+                    remain = 4;
+                    mors += '1';
+                } else if (onoff.match(/[っッｯ]/)) {
+                    // 単音を再生する
+                    audio.play();
+                    remain = 2;
+                    mors += '0';
+                } else if (onoff.match(/[ー─-ｰ]/)) {
+                    // 区切りなので、再生せず無音を作る
+                    remain = 3;
+
+                    // 1グループ分のモールスをデコードして、原文テキストに追記
+                    $('#text').val($('#text').val() + revTable[mors]);
+                    mors = '';
+                } else {
+                    // モールスとして解読できなかった文字はそのまま原文テキストに転記
+                    $('#text').val($('#text').val() + onoff);
+                }
+            }, 50);
+            $('#text').val('');
+            $('#yoro').val('');
+        });
+    </script>
+</body>
+
+</html>
